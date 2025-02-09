@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>超焦距计算器</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      padding: 20px;
+      background-color: #f0f0f0;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #333;
+      font-size: 24px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      background: #fff;
+    }
+
+    input:disabled {
+      background: #f5f5f5;
+    }
+
+    #results {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    #results h2 {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    #results p {
+      margin: 8px 0;
+      font-size: 16px;
+      color: #444;
+    }
+
+    .status {
+      padding: 8px;
+      border-radius: 5px;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .sharp {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .unsharp {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    #error {
+      color: #dc3545;
+      margin: 10px 0;
+      display: none;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+    }
+
+    .checkbox-group label {
+      margin: 0 0 0 10px;
+      flex: 1;
+    }
+
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+    }
+
+    .input-with-select {
+      display: flex;
+      gap: 10px;
+    }
+
+    .input-with-select select {
+      flex: 2;
+    }
+
+    .input-with-select input {
+      flex: 1;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>📷 超焦距计算器</h1>
+    <div id="error" class="status">请输入有效的数值</div>
+
+    <div class="input-group">
+      <label>相机画幅</label>
+      <select id="format">
+        <option value="36">全画幅 (36×24mm)</option>
+        <option value="23.6">APS-C (尼康/索尼) (23.6×15.6mm)</option>
+        <option value="22.2">APS-C (佳能) (22.2×14.8mm)</option>
+        <option value="17.3">M4/3 (17.3×13mm)</option>
+        <option value="43.8">中画幅 44×33 (43.8×32.9mm)</option>
+      </select>
+    </div>
+
+    <div class="input-group">
+      <label>传感器水平像素数</label>
+      <div class="input-with-select">
+        <select id="pixels-preset" onchange="updatePixels(this.value)">
+          <option value="custom">自定义...</option>
+          <option value="6000">24MP (6000×4000)</option>
+          <option value="7952">42MP (7952×5304)</option>
+          <option value="8768">61MP (8768×5848)</option>
+          <option value="9504">102MP (9504×6336)</option>
+        </select>
+        <input type="number" id="pixels" value="6000" min="100" step="100">
+      </div>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="auto-coc" checked>
+      <label>自动计算弥散圆(基于2像素)</label>
+    </div>
+
+    <div class="input-group">
+      <label>弥散圆直径 (mm)</label>
+      <input type="number" id="coc" value="0.030" step="0.001" min="0.001" disabled>
+    </div>
+
+    <div class="input-group">
+      <label>镜头真实焦距 (mm)</label>
+      <input type="number" id="focal-length" value="50" min="1" step="1">
+    </div>
+
+    <div class="input-group">
+      <label>光圈值 (f/)</label>
+      <div class="input-with-select">
+        <select id="aperture-preset" onchange="updateAperture(this.value)">
+          <option value="custom">自定义...</option>
+          <option value="1.4">f/1.4</option>
+          <option value="2">f/2</option>
+          <option value="2.8">f/2.8</option>
+          <option value="4">f/4</option>
+          <option value="5.6">f/5.6</option>
+          <option value="8">f/8</option>
+          <option value="11">f/11</option>
+          <option value="16">f/16</option>
+          <option value="22">f/22</option>
+        </select>
+        <input type="number" id="aperture" value="2.8" min="1" step="0.1">
+      </div>
+    </div>
+
+    <div id="results">
+      <h2>计算结果</h2>
+      <p>超焦距: <strong id="hyperfocal">-</strong></p>
+      <p>实际像素尺寸: <span id="coc-pixels">-</span> 像素</p>
+      <div id="sharpness-status" class="status"></div>
+    </div>
+  </div>
+
+  <script>
+    const formats = {
+      '36': 36,
+      '23.6': 23.6,
+      '22.2': 22.2,
+      '17.3': 17.3,
+      '43.8': 43.8
+    };
+
+    function updatePixels(value) {
+      const pixelsInput = document.getElementById('pixels');
+      if (value !== 'custom') {
+        pixelsInput.value = value;
+      }
+      calculateHyperfocal();
+    }
+
+    function updateAperture(value) {
+      const apertureInput = document.getElementById('aperture');
+      if (value !== 'custom') {
+        apertureInput.value = value;
+      }
+      calculateHyperfocal();
+    }
+
+    function calculateHyperfocal() {
+      // 获取输入值
+      const format = parseFloat(document.getElementById('format').value);
+      const pixels = parseFloat(document.getElementById('pixels').value);
+      const autoCoc = document.getElementById('auto-coc').checked;
+      const cocInput = document.getElementById('coc');
+      const focal = parseFloat(document.getElementById('focal-length').value);
+      const aperture = parseFloat(document.getElementById('aperture').value);
+      const errorElement = document.getElementById('error');
+
+      // 输入验证
+      if ([format, pixels, focal, aperture].some(isNaN) || [format, pixels, focal, aperture].some(v => v <= 0)) {
+        errorElement.style.display = 'block';
+        return;
+      }
+      errorElement.style.display = 'none';
+
+      // 计算像素间距
+      const pixelPitch = format / pixels;
+      let coc = autoCoc ? 2 * pixelPitch : parseFloat(cocInput.value);
+
+      // 自动更新弥散圆值
+      if (autoCoc) {
+        cocInput.value = coc.toFixed(3);
+      }
+
+      // 计算超焦距(单位:毫米)
+      const hyperfocalMm = (Math.pow(focal, 2) / (aperture * coc)) + focal;
+
+      // 转换为米
+      const hyperfocalM = hyperfocalMm / 1000;
+
+      // 计算实际像素尺寸
+      const actualPixels = coc / pixelPitch;
+
+      // 更新显示结果
+      document.getElementById('hyperfocal').textContent = `${hyperfocalM.toFixed(2)} 米`;
+      document.getElementById('coc-pixels').textContent = actualPixels.toFixed(1);
+
+      // 更新清晰度状态
+      const statusElement = document.getElementById('sharpness-status');
+      statusElement.className = 'status ' + (actualPixels <= 2 ? 'sharp' : 'unsharp');
+      statusElement.innerHTML = actualPixels <= 2
+        ? '✅ 满足清晰要求(≤2像素)'
+        : '⚠️ 不满足清晰要求(>2像素)';
+    }
+
+    // 事件监听
+    document.getElementById('auto-coc').addEventListener('change', function () {
+      document.getElementById('coc').disabled = this.checked;
+      calculateHyperfocal();
+    });
+
+    ['format', 'pixels', 'focal-length', 'aperture', 'coc'].forEach(id => {
+      document.getElementById(id).addEventListener('input', calculateHyperfocal);
+    });
+
+    // 初始计算
+    calculateHyperfocal();
+  </script>
+</body>
+
+</html>
